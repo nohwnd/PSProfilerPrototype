@@ -12,17 +12,16 @@ function Trace-ScriptPowerShell5 {
     }
     
     try {
-        [PSProfilerPrototype.Tracer]::PatchOrUnpatch($ExecutionContext, $true)
+        [PSProfilerPrototype.Tracer]::Enable($ExecutionContext)
         Set-PSDebug -Trace 1
         
-
         $null = & $ScriptBlock
-    } 
+    }
     finally {
         Set-PSDebug -Trace 0
-        [PSProfilerPrototype.Tracer]::PatchOrUnpatch($ExecutionContext, $false)
+        $hits = [PSProfilerPrototype.Tracer]::Disable()
+        $hits
     }
 
     # copy the list
-    [PSProfilerPrototype.Tracer]::Hits | ForEach-Object { $_ }
 }
