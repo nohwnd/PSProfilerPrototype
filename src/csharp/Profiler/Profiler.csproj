@@ -25,7 +25,7 @@
   </ItemGroup>
   
   <ItemGroup>
-    <None Update="PSProfilerPrototype.psm1">
+    <None Update="Profiler.psm1">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>

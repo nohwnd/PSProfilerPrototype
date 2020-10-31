@@ -1,24 +1,38 @@
-# Trace is a collecton of standardized trace events that look like this:
-# [PSCustomObject]@{
-#     # path of the script
-#     Path = $null
+function Trace-Script { 
+    [CmdletBinding()]
+    param($ScriptBlock) 
+        
+    try {
+        [Profiler.Tracer]::Enable($ExecutionContext, $null, $null)
+        Set-PSDebug -Trace 1
+        
+        $null = & $ScriptBlock
+    }
+    finally {
+        try {
+            Set-PSDebug -Trace 0
+            $hits = [Profiler.Tracer]::Disable()
+            $hits
+        }
+        catch { 
 
-#     # the line
-#     Line = -1
-#     # the column
-#     Column = -1
+        }
+    }
+}
 
-#     # the extent reference
-#     Extent = $null
-#     # or the text if we don't have extent
-#     Text = $null
+function Measure-Script {
+    [CmdletBinding()]
+    param($ScriptBlock)
+    
 
-#     # when it happened
-#     Timestamp = -1
+    $t = Trace-Script -ScriptBlock $ScriptBlock
+    $p =  Get-Profile -Trace $trace
 
-#     # on which index in the collection of all events this one is
-#     Index = -1
-# }
+    [PSCustomObject] @{
+        Trace = $t
+        Profile = $p
+    }
+}
 
 function Get-Profile ($Trace, $Path) {
     if ($Path) {
@@ -98,7 +112,7 @@ function Get-Profile ($Trace, $Path) {
     # into a single array
     $all = $fileMap.Values | Foreach-Object { $_ } | ForEach-Object { 
         $_.Average = if ($_.HitCount -eq 0) { [TimeSpan]::Zero } else { [TimeSpan]::FromTicks($_.Duration.Ticks / $_.HitCount) }
-        $_.Percent = [Math]::Round($_.Duration.Ticks / $total.Ticks, 4, "AwayFromZero") * 100
+        $_.Percent = [Math]::Round($_.Duration.Ticks / $total.Ticks, 4, [System.MidpointRounding]::AwayFromZero) * 100
         $_ }
 
     $top10Percent = $all | 
@@ -135,5 +149,3 @@ function Get-Profile ($Trace, $Path) {
         }
     }
 }
-
-

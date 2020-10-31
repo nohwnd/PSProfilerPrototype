@@ -1,7 +1,7 @@
 ﻿using System.Management.Automation.Language;
 using System;
 
-namespace PSProfilerPrototype
+namespace Profiler
 {
     public class Hit
     {

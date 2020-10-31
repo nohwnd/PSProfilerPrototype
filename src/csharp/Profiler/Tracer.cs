@@ -5,8 +5,9 @@ using System.Management.Automation.Language;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System;
+using System.Linq;
 
-namespace PSProfilerPrototype
+namespace Profiler
 {
     public static class Tracer
     {
@@ -16,13 +17,19 @@ namespace PSProfilerPrototype
         private static int _index;
 
         private static List<Hit> _hits;
-        
-        public static void Enable(EngineIntrinsics context)
+
+        private static List<string> _include;
+        private static List<string> _exclude;
+
+        public static void Enable(EngineIntrinsics context, IEnumerable<string> include = null, IEnumerable<string> exclude = null)
         {
             _hits = new List<Hit>(1000);
             _harmony = new Harmony("fix.debugger");
             _first = true;
             _index = 0;
+
+            _include = include?.ToList();
+            _exclude = exclude?.ToList();
 
             MethodInfo method = GetMethodToPrefix(context);
             var prefix = typeof(Tracer).GetMethod(nameof(TraceLine), BindingFlags.Static | BindingFlags.NonPublic);
@@ -41,9 +48,12 @@ namespace PSProfilerPrototype
                 _harmony.UnpatchAll();
             }
 
+            // and unreference the one in static collection
             var hits = _hits;
             _hits = null;
-            return hits;
+            // skip last one because that is call to disable tracing that we use to figure out 
+            // the duration of the last instruction
+            return hits.Take(hits.Count - 1).ToList();
         }
 
         private static MethodInfo GetMethodToPrefix(EngineIntrinsics context)
@@ -65,10 +75,29 @@ namespace PSProfilerPrototype
 
         private static void Trace(IScriptExtent extent)
         {
+            var hasIncludeFilter = _include != null && _include.Count != 0;
+            if (hasIncludeFilter)
+            {
+                if (extent.File == null || !_include.Any(f => f.EndsWith(extent.File)))
+                {
+                    return;
+                }
+            }
+
+            var hasExcludeFilter = _exclude != null && _exclude.Count != 0;
+            if (hasExcludeFilter)
+            {
+                if (extent.File != null && !_exclude.Any(f => f.EndsWith(extent.File)))
+                {
+                    return;
+                }
+            }
+
             // Write duration to the previous timestamp. Duration is the start of the 
             // previous entry, till the start of the current entry
             var timestamp = Stopwatch.GetTimestamp();
-            if ( _previousHit != null ) {
+            if (_previousHit != null)
+            {
                 _previousHit.Duration = TimeSpan.FromTicks(timestamp - _previousHit.Timestamp);
             }
 
@@ -81,7 +110,7 @@ namespace PSProfilerPrototype
             // and it would add noise to the measuring
             if (_first)
             {
-                _first = false;                
+                _first = false;
             }
             else
             {
