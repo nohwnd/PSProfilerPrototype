@@ -1,4 +1,7 @@
-# PSProfiler prototype
+# See https://github.com/nohwnd/Profiler for module that supports PowerShell 7 and 5. This repository is archived.
+
+
+## PSProfiler prototype
 
 This prototype uses Harmony to inject a method into the ScriptDebugger to replace call to TraceLine which would normally write to Debug. This allow us to trace scripts on PowerShell 5 
 
